@@ -1,0 +1,237 @@
+# Core evaluation suite for timeseries-mcp (https://github.com/Lkhanaajav/timeseries-mcp).
+#
+# Eight tasks, each probing a distinct failure mode:
+#   gap-audit            — basic tool sequencing + reading structured results
+#   seasonal-anomalies   — choosing the seasonal-aware method and the right period
+#   deploy-changepoint   — multi-step preprocessing (resample BEFORE detecting)
+#   methane-trend        — statistical reporting without inventing numbers
+#   forecast-backtest    — parameterization + quoting honest backtest error
+#   overlap-error        — graceful recovery when a tool call legitimately fails
+#   window-inspection    — respecting response caps instead of dumping raw data
+#   stationarity-check   — test interpretation and actionable recommendation
+#
+# All tasks use the server's seeded sample datasets, so every expectation below
+# is a reproducible ground-truth value, not a guess.
+
+name: timeseries-mcp-core
+description: Does an agent drive timeseries-mcp correctly — right tools, right arguments, grounded claims?
+
+server:
+  type: import
+  target: timeseries_mcp.server:mcp
+  # To evaluate the spawned binary instead (what production hosts run):
+  # type: stdio
+  # command: uvx
+  # args: ["--from", "git+https://github.com/Lkhanaajav/timeseries-mcp", "timeseries-mcp"]
+
+system_prompt: >
+  You are a careful data analyst. Use the timeseries tools for every factual
+  claim; never invent numbers. Load data first, then analyze it by series_id.
+  Finish with a concise answer to the user's question.
+
+pass_threshold: 0.7
+
+tasks:
+  - id: gap-audit
+    must_pass: true
+    prompt: >
+      Load the bundled sample dataset 'server_room_temp' and audit its data
+      quality. Report any sampling gaps: when they happened and roughly how
+      many data points were lost.
+    optimal_calls: 2
+    tools:
+      must_call: [load_sample, data_quality]
+      may_call: [list_series, describe]
+    arg_checks:
+      - { tool: load_sample, path: name, op: eq, value: server_room_temp }
+    answer:
+      contains: ["gap"]
+      numeric_facts:
+        - { value: 24, tolerance: 1, label: points missed in the gap }
+    reference_plan:
+      - { tool: load_sample, arguments: { name: server_room_temp } }
+      - { tool: data_quality, arguments: { series_id: "{r0.series_id}" } }
+    reference_answer: >
+      Quality audit of server_room_temp ({r0.n_points} points): {r1.verdict}
+      The largest gap runs from {r1.gaps[0].start} to {r1.gaps[0].end},
+      roughly {r1.gaps[0].expected_points_missed} samples lost.
+
+  - id: seasonal-anomalies
+    prompt: >
+      Load 'server_room_temp' (5-minute samples with a daily cycle, so the
+      seasonal period is 288). Detect anomalies using the seasonal-context
+      method with a score threshold of 4. How many anomalies are there, and
+      what is the timestamp and value of the strongest one?
+    optimal_calls: 2
+    tools:
+      must_call: [load_sample, detect_anomalies]
+      may_call: [list_series, describe, autocorrelation, data_quality]
+    arg_checks:
+      - { tool: detect_anomalies, path: method, op: eq, value: stl_residual }
+      - { tool: detect_anomalies, path: period, op: approx, value: 288, tolerance: 0 }
+      - { tool: detect_anomalies, path: threshold, op: approx, value: 4, tolerance: 0.5 }
+    answer:
+      contains: ["2026-06-06"]
+      numeric_facts:
+        - { value: 4, tolerance: 0, label: anomaly count }
+        - { value: 28.88, tolerance: 0.02, label: strongest anomaly value }
+    reference_plan:
+      - { tool: load_sample, arguments: { name: server_room_temp } }
+      - tool: detect_anomalies
+        arguments:
+          series_id: "{r0.series_id}"
+          method: stl_residual
+          period: 288
+          threshold: 4.0
+    reference_answer: >
+      Using seasonal-aware STL-residual detection (period 288, threshold 4),
+      there are {r1.n_anomalies} anomalies. The strongest is at
+      {r1.anomalies[0].timestamp} with value {r1.anomalies[0].value}
+      (score {r1.anomalies[0].score}).
+
+  - id: deploy-changepoint
+    prompt: >
+      Load 'cpu_utilization' (hourly CPU data over 30 days). Aggregate it to
+      daily means, then detect level shifts. A shift here may last less than a
+      week, so use a minimum segment length of 4 days. When did the sustained
+      jump start, when did it end, and how large was it?
+    optimal_calls: 3
+    tools:
+      must_call: [load_sample, resample, detect_changepoints]
+      may_call: [list_series, describe, rolling_stats]
+      order:
+        - { before: resample, after: detect_changepoints }
+    arg_checks:
+      - { tool: resample, path: rule, op: contains, value: "1D" }
+      - { tool: detect_changepoints, path: min_segment_length, op: lte, value: 5 }
+    answer:
+      contains: ["2026-05-15", "2026-05-20"]
+      numeric_facts:
+        - { value: 69.97, tolerance: 0.1, label: plateau daily mean }
+    reference_plan:
+      - { tool: load_sample, arguments: { name: cpu_utilization } }
+      - { tool: resample, arguments: { series_id: "{r0.series_id}", rule: "1D", agg: mean } }
+      - tool: detect_changepoints
+        arguments: { series_id: "{r1.series_id}", min_segment_length: 4 }
+    reference_answer: >
+      After daily aggregation, CPU utilization jumps at
+      {r2.changepoints[1].timestamp}: {r2.changepoints[1].mean_before} to
+      {r2.changepoints[1].mean_after} average. It reverts at
+      {r2.changepoints[2].timestamp} (back to {r2.changepoints[2].mean_after}),
+      consistent with a bad deploy rolled back five days later.
+
+  - id: methane-trend
+    prompt: >
+      Load 'methane_ppm'. Is there a statistically significant trend? Give the
+      direction, the robust slope estimate, the total modeled change over the
+      series, and the Mann-Kendall p-value.
+    optimal_calls: 2
+    tools:
+      must_call: [load_sample, trend_test]
+      may_call: [describe, stationarity, data_quality, list_series]
+    answer:
+      contains: ["increasing"]
+      numeric_facts:
+        - { value: 1.62, tolerance: 0.02, label: total change over span }
+    reference_plan:
+      - { tool: load_sample, arguments: { name: methane_ppm } }
+      - { tool: trend_test, arguments: { series_id: "{r0.series_id}" } }
+    reference_answer: >
+      The methane series shows a statistically significant {r1.direction} trend
+      (Mann-Kendall p={r1.mann_kendall.p_value}). Robust Theil-Sen slope is
+      {r1.theil_sen_slope_per_step} per step, a total modeled change of
+      {r1.change_over_span} ppm across the series.
+
+  - id: forecast-backtest
+    prompt: >
+      Load 'server_room_temp' and produce a 12-step seasonal-naive forecast
+      (the seasonal period is 288). Report the holdout backtest MAE and the
+      first forecasted value with its 95% interval.
+    optimal_calls: 2
+    tools:
+      must_call: [load_sample, forecast_baseline]
+      may_call: [list_series, describe, decompose, autocorrelation]
+    arg_checks:
+      - { tool: forecast_baseline, path: method, op: eq, value: seasonal_naive }
+      - { tool: forecast_baseline, path: period, op: approx, value: 288, tolerance: 0 }
+      - { tool: forecast_baseline, path: horizon, op: approx, value: 12, tolerance: 0 }
+    answer:
+      numeric_facts:
+        - { value: 2.231, tolerance: 0.01, label: backtest MAE }
+        - { value: 21.9, tolerance: 0.05, label: first forecast value }
+    grounding_allowlist: [95]  # "95% interval" is methodology, not a measured value
+    reference_plan:
+      - { tool: load_sample, arguments: { name: server_room_temp } }
+      - tool: forecast_baseline
+        arguments:
+          series_id: "{r0.series_id}"
+          method: seasonal_naive
+          period: 288
+          horizon: 12
+    reference_answer: >
+      Seasonal-naive forecast, 12 steps ahead. Holdout backtest over the last
+      {r1.backtest.n_test} points: MAE {r1.backtest.mae}, RMSE {r1.backtest.rmse}.
+      First forecast at {r1.forecasts[0].timestamp}: {r1.forecasts[0].value}
+      (95% interval {r1.forecasts[0].lo} to {r1.forecasts[0].hi}).
+
+  - id: overlap-error
+    prompt: >
+      Load both 'server_room_temp' and 'methane_ppm' and correlate them.
+      If that is not possible, explain exactly why.
+    optimal_calls: 3
+    tools:
+      must_call: [load_sample, compare_series]
+      may_call: [list_series, describe, resample]
+    answer:
+      contains: ["overlap"]
+    reference_plan:
+      - { tool: load_sample, arguments: { name: server_room_temp } }
+      - { tool: load_sample, arguments: { name: methane_ppm } }
+      - tool: compare_series
+        expect_error: true
+        arguments: { series_a: "{r0.series_id}", series_b: "{r1.series_id}" }
+    reference_answer: >
+      The two series cannot be correlated directly: they do not overlap in time.
+      server_room_temp covers {r0.start} to {r0.end}, while methane_ppm covers
+      {r1.start} to {r1.end}. The server rejected the comparison: {r2}
+
+  - id: window-inspection
+    prompt: >
+      Load 'methane_ppm'. How many observations does the full series contain?
+      Then fetch a thinned view of at most 100 points and confirm whether
+      thinning was applied.
+    optimal_calls: 2
+    tools:
+      must_call: [load_sample, get_window]
+      may_call: [describe, list_series, data_quality]
+    arg_checks:
+      - { tool: get_window, path: limit, op: lte, value: 100 }
+    answer:
+      contains: ["thin"]
+      numeric_facts:
+        - { value: 1344, tolerance: 0, label: total observations }
+    reference_plan:
+      - { tool: load_sample, arguments: { name: methane_ppm } }
+      - { tool: get_window, arguments: { series_id: "{r0.series_id}", limit: 100 } }
+    reference_answer: >
+      The full series has {r1.n_in_window} observations. The window was thinned
+      to {r1.returned} evenly spaced points (truncated={r1.truncated}) to stay
+      under the 100-point limit.
+
+  - id: stationarity-check
+    prompt: >
+      Load 'methane_ppm'. Is the series stationary? Run the appropriate
+      statistical tests, give both p-values, and if it is not stationary say
+      what transformation to try before modeling.
+    optimal_calls: 2
+    tools:
+      must_call: [load_sample, stationarity]
+      may_call: [trend_test, autocorrelation, describe, list_series]
+    answer:
+      contains: ["non-stationary", "differencing"]
+    reference_plan:
+      - { tool: load_sample, arguments: { name: methane_ppm } }
+      - { tool: stationarity, arguments: { series_id: "{r0.series_id}" } }
+    reference_answer: >
+      {r1.verdict} ADF p={r1.adf.p_value}, KPSS p={r1.kpss.p_value}.
+      Recommendation: {r1.differencing_hint}
