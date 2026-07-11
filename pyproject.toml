@@ -1,0 +1,61 @@
+[project]
+name = "mcp-trajectory-evals"
+version = "0.1.0"
+description = "Trajectory-level evaluation harness for tool-using agents — drives agents against a real MCP server and scores every step: tool selection, arguments, grounding, efficiency."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Lkhanaajav Mijiddorj", email = "lhanaamijgee@gmail.com" }]
+keywords = ["mcp", "agent-evaluation", "trajectory-evals", "llm-evals", "ai-agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "fastmcp>=3.4,<4",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+live = ["anthropic>=0.116"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "timeseries-mcp @ git+https://github.com/Lkhanaajav/timeseries-mcp",
+]
+
+[project.scripts]
+trajeval = "trajectory_evals.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Lkhanaajav/mcp-trajectory-evals"
+Issues = "https://github.com/Lkhanaajav/mcp-trajectory-evals/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trajectory_evals"]
+
+[tool.hatch.metadata]
+# The dev extra installs the demo target server (timeseries-mcp) straight from GitHub.
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
