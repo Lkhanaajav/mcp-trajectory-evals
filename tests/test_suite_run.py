@@ -78,6 +78,7 @@ async def test_sabotage_hallucinated_numbers(suite, gap_audit_trajectory):
     assert honest.passed
     assert caught.dimension("grounding").score < 0.5
     assert caught.dimension("answer").score < honest.dimension("answer").score
+    assert not caught.passed  # grounding floor: hallucination is a hard fail
 
 
 async def test_sabotage_skipped_tool(suite, gap_audit_trajectory):

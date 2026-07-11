@@ -115,6 +115,11 @@ class Suite(BaseModel):
     )
     weights: Weights = Field(default_factory=Weights)
     pass_threshold: float = Field(default=0.7, ge=0, le=1)
+    grounding_floor: float = Field(
+        default=0.5, ge=0, le=1,
+        description="Hard-fail any task whose grounding score falls below this — an answer "
+        "built on unsupported numbers must not pass on good tool selection alone.",
+    )
     tasks: list[Task]
 
     @classmethod

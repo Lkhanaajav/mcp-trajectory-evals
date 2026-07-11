@@ -57,9 +57,14 @@ def score_task(suite: Suite, task: Task, trajectory: Trajectory) -> TaskScore:
 
     # Required means required: skipping a must_call tool or touching a
     # forbidden one fails the task no matter how the weighted score lands.
+    # Likewise a mostly-hallucinated answer (grounding under the floor) —
+    # good tool selection must not launder unsupported claims.
     called = set(trajectory.called_tools())
-    hard_fail = any(t not in called for t in task.tools.must_call) or any(
-        t in called for t in task.tools.must_not_call
+    grounding = next(d.score for d in dims if d.dimension == "grounding")
+    hard_fail = (
+        any(t not in called for t in task.tools.must_call)
+        or any(t in called for t in task.tools.must_not_call)
+        or grounding < suite.grounding_floor
     )
     return TaskScore(
         task_id=task.id,
