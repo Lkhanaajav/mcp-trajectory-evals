@@ -18,7 +18,14 @@ Final-output evals have a documented blind spot: an agent can run the wrong tool
 | **efficiency** | Redundant identical calls, 9 calls where 3 suffice |
 | **answer** | Required facts and phrases missing from the final response |
 
-A task **hard-fails** if a `must_call` tool was skipped or a `must_not_call` tool was touched — no weighted average can launder that away.
+A task **hard-fails** if a `must_call` tool was skipped, a `must_not_call` tool was touched, or grounding falls below the suite's floor (default 0.5) — no weighted average can launder a skipped audit step or a hallucinated answer.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/scorecard_dark.png">
+  <img alt="Scorecard heatmap: an honest agent scores 1.00 everywhere; hallucinated numbers crater grounding to 0.00 and hard-fail; a skipped required tool hard-fails selection; a wrong period argument is caught only by the arguments dimension while the final answer still looks correct" src="docs/charts/scorecard_light.png">
+</picture>
+
+*Computed, not illustrative — the sabotage rows are real trajectories broken the way bad agents break, rescored by the same scorers CI uses ([regenerate](scripts/make_readme_chart.py)). Note the last row: the final answer still looked right; only the `arguments` dimension caught the wrong seasonal period. That is the case for trajectory-level scoring.*
 
 ## What a run looks like
 
