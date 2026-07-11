@@ -1,0 +1,326 @@
+{
+  "suite": "timeseries-mcp-core",
+  "runner": "scripted",
+  "model": null,
+  "tasks": [
+    {
+      "task_id": "gap-audit",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": true,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "data_quality"
+      ],
+      "final_answer": "Quality audit of server_room_temp (1992 points): Issues found: 1 sampling gaps. The largest gap runs from 2026-06-04T11:15:00 to 2026-06-04T13:20:00, roughly 24 samples lost.\n"
+    },
+    {
+      "task_id": "seasonal-anomalies",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "detect_anomalies"
+      ],
+      "final_answer": "Using seasonal-aware STL-residual detection (period 288, threshold 4), there are 4 anomalies. The strongest is at 2026-06-06T05:00:00 with value 28.8831 (score 16.3355).\n"
+    },
+    {
+      "task_id": "deploy-changepoint",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "resample",
+        "detect_changepoints"
+      ],
+      "final_answer": "After daily aggregation, CPU utilization jumps at 2026-05-15T00:00:00: 44.6914 to 69.9703 average. It reverts at 2026-05-20T00:00:00 (back to 45.6958), consistent with a bad deploy rolled back five days later.\n"
+    },
+    {
+      "task_id": "methane-trend",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": [
+            "no arg checks defined"
+          ]
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "trend_test"
+      ],
+      "final_answer": "The methane series shows a statistically significant increasing trend (Mann-Kendall p=0). Robust Theil-Sen slope is 0.00120611 per step, a total modeled change of 1.61981 ppm across the series.\n"
+    },
+    {
+      "task_id": "forecast-backtest",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "forecast_baseline"
+      ],
+      "final_answer": "Seasonal-naive forecast, 12 steps ahead. Holdout backtest over the last 100 points: MAE 2.23128, RMSE 2.2657. First forecast at 2026-06-08T00:00:00: 21.9044 (95% interval 19.9404 to 23.8684).\n"
+    },
+    {
+      "task_id": "overlap-error",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": [
+            "no arg checks defined"
+          ]
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "load_sample",
+        "compare_series"
+      ],
+      "final_answer": "The two series cannot be correlated directly: they do not overlap in time. server_room_temp covers 2026-06-01T00:00:00 to 2026-06-07T23:55:00, while methane_ppm covers 2026-04-01T00:00:00 to 2026-04-14T23:45:00. The server rejected the comparison: Error calling tool 'compare_series': Series share only 0 timestamps; need at least 8 overlapping observations. Consider `resample` to align them onto a common grid first.\n"
+    },
+    {
+      "task_id": "window-inspection",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "get_window"
+      ],
+      "final_answer": "The full series has 1344 observations. The window was thinned to 96 evenly spaced points (truncated=True) to stay under the 100-point limit.\n"
+    },
+    {
+      "task_id": "stationarity-check",
+      "overall": 1.0,
+      "passed": true,
+      "must_pass": false,
+      "dimensions": [
+        {
+          "dimension": "selection",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "arguments",
+          "score": 1.0,
+          "details": [
+            "no arg checks defined"
+          ]
+        },
+        {
+          "dimension": "grounding",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "efficiency",
+          "score": 1.0,
+          "details": []
+        },
+        {
+          "dimension": "answer",
+          "score": 1.0,
+          "details": []
+        }
+      ],
+      "tool_sequence": [
+        "load_sample",
+        "stationarity"
+      ],
+      "final_answer": "Both tests agree: the series is non-stationary. ADF p=0.235784, KPSS p=0.01. Recommendation: Apply first differencing, then re-test.\n"
+    }
+  ],
+  "summary": {
+    "n_tasks": 8,
+    "n_passed": 8,
+    "pass_rate": 1.0,
+    "mean_overall": 1.0,
+    "must_pass_failures": []
+  }
+}
